@@ -15,3 +15,21 @@ List<object> questions = new()
     }
 };
 
+void MainMenu()
+{
+    Console.Clear();
+    Console.WriteLine("Welcome to the Quiz!");
+
+    Console.WriteLine("1. Start Quiz");
+    Console.WriteLine("2. ");
+    Console.WriteLine("3. ");
+    Console.WriteLine("X. Exit");
+}
+
+void StartQuiz()
+{
+
+}
+
+// Start the application
+MainMenu();
