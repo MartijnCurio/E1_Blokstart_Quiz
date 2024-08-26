@@ -10,5 +10,6 @@ namespace E1_Blokstart_Quiz.Model
     {
         public string Question { get; set; }
         public Dictionary<string, bool> Answers { get; set; }
+        public List<string>? Keywords { get; set; }
     }
 }
