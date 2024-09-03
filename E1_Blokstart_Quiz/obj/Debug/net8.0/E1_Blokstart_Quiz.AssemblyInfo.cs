@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("E1_Blokstart_Quiz")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d141cc846fe96e2751311666f904ff467f1181a5")]
 [assembly: System.Reflection.AssemblyProductAttribute("E1_Blokstart_Quiz")]
 [assembly: System.Reflection.AssemblyTitleAttribute("E1_Blokstart_Quiz")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
