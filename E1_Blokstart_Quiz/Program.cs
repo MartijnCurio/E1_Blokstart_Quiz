@@ -1,7 +1,9 @@
 ﻿using CarDB.Data;
 using E1_Blokstart_Quiz.Model;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using System.Runtime.CompilerServices;
+using System.Xml.Schema;
 using WheelyGoodCars;
 
 DataContext dbContext = new DataContext();
@@ -12,13 +14,13 @@ void MainMenu()
     do
     {
         Console.Clear();
-        Console.WriteLine("Welcome to the Quiz!\n");
+        Styling.AddHeader("Welcome to the Quiz!\n");
 
-        Console.WriteLine("1. Kies een quiz");
-        Console.WriteLine("2. Quiz uploaden");
-        Console.WriteLine("3. Antwoorden controleren");
-        Console.WriteLine("4. Vragen beheren");
-        Console.WriteLine("X. Exit");
+        Styling.AddOption("1. Kies een quiz");
+        Styling.AddOption("2. Quiz uploaden");
+        Styling.AddOption("3. Antwoorden controleren");
+        Styling.AddOption("4. Vragen beheren");
+        Styling.AddOption("X. Exit");
 
         string input = Helpers.AskNotEmpty("\nKies een optie:\n");
         switch (input.ToLower())
@@ -48,12 +50,15 @@ void MainMenu()
 void ShowQuizMenu()
 {
     Console.Clear();
+    Styling.AddHeader("Kies een quiz!\n");
 
+    Styling.AddLine();
     // toon lijst met quizzen en laat de gebruiker een quiz kiezen
     foreach (var quiz in dbContext.Quizzes)
     {
-        Console.WriteLine($"{quiz.Id}) {quiz.Name}");
+        Styling.AddOption($"{quiz.Id}) {quiz.Name}");
     }
+    Styling.AddLine();
 
     // Vraag om een quiz id
     int input = Helpers.AskInt("\nKies een quiz (id):\n");
@@ -62,7 +67,7 @@ void ShowQuizMenu()
     Quiz? selectedQuiz = dbContext.Quizzes.Where(q => q.Id == input).FirstOrDefault();
     if (selectedQuiz == null)
     {
-        Console.WriteLine("Quiz niet gevonden!");
+        Styling.AddError("Quiz niet gevonden!");
         Console.ReadKey();
         return;
     }
@@ -82,8 +87,8 @@ void StartQuiz(Quiz selectedQuiz)
     foreach (var question in questions)
     {
         Console.Clear();
-        Console.WriteLine($"Quiz: {selectedQuiz.Name}");
-        Console.WriteLine($"Vraag: {questionIndex}/{questionCount}\n");
+        Styling.AddHeader("Quiz: " + selectedQuiz.Name);
+        Styling.AddHeader($"Vraag: {questionIndex}/{questionCount}\n");
 
         string answer;
         bool isCorrect = false;
@@ -91,28 +96,30 @@ void StartQuiz(Quiz selectedQuiz)
         if (question.Type == 0) // gesloten vraag
         {
             Console.WriteLine($"{question.Question}\n");
-            Console.WriteLine($"A) {question.AnswerA}");
-            Console.WriteLine($"B) {question.AnswerB}");
-            Console.WriteLine($"C) {question.AnswerC}");
-            
+            Styling.AddLine();
+            Styling.AddOption($"A) {question.AnswerA}");
+            Styling.AddOption($"B) {question.AnswerB}");
+            Styling.AddOption($"C) {question.AnswerC}");
+            Styling.AddLine();
+
             answer = Helpers.AskNotEmpty("\nGeef je antwoord (A, B of C):\n").ToUpper();
 
             if (question.CorrectAnswer.Contains(answer))
             {
-                Console.WriteLine("Correct!");
+                Styling.AddInfo("Correct!");
                 score++;
                 isCorrect = true;
             }
             else
             {
-                Console.WriteLine($"Incorrect! Het correcte antwoord is: {question.CorrectAnswer}");
+                Styling.AddError($"Incorrect! Het correcte antwoord is: {question.CorrectAnswer}");
             }
         }
         else if (question.Type == 1) // open vraag
         {
             var keywords = question.CorrectAnswer.Split(',');
 
-            Console.WriteLine($"{question.Question}\n");
+            Styling.AddHeader($"{question.Question}\n");
 
             answer = Helpers.AskNotEmpty("\nGeef je antwoord:\n").ToUpper();
 
@@ -127,34 +134,36 @@ void StartQuiz(Quiz selectedQuiz)
             }
             if (correct)
             {
-                Console.WriteLine("Correct!");
+                Styling.AddInfo("Correct!");
                 score++;
             }
             else
             {
-                Console.WriteLine($"Incorrect! Jouw antwoord bevat niet alle keywords: {question.CorrectAnswer}");
+                Styling.AddError($"Incorrect! Jouw antwoord bevat niet alle keywords: {question.CorrectAnswer}");
             }
 
             isCorrect = correct;
         }
         else // meerkeuze vraag
         {
-            Console.WriteLine($"{question.Question}\n");
-            Console.WriteLine($"A) {question.AnswerA}");
-            Console.WriteLine($"B) {question.AnswerB}");
-            Console.WriteLine($"C) {question.AnswerC}");
-            
+            Styling.AddHeader($"{question.Question}\n");
+            Styling.AddLine();
+            Styling.AddOption($"A) {question.AnswerA}");
+            Styling.AddOption($"B) {question.AnswerB}");
+            Styling.AddOption($"C) {question.AnswerC}");
+            Styling.AddLine();
+
             answer = Helpers.AskNotEmpty("\nGeef je antwoord (A, B, C):\n").ToUpper();
 
             if (answer == question.CorrectAnswer)
             {
-                Console.WriteLine("Correct!");
+                Styling.AddInfo("Correct!");
                 score++;
                 isCorrect = true;
             }
             else
             {
-                Console.WriteLine($"Incorrect! Het correcte antwoord is: {question.CorrectAnswer}");
+                Styling.AddError($"Incorrect! Het correcte antwoord is: {question.CorrectAnswer}");
             }
         }
 
@@ -180,8 +189,8 @@ void StartQuiz(Quiz selectedQuiz)
     decimal scorePercentage = Math.Round((decimal)score / questionCount * 100, 1);
 
     Console.Clear();
-    Console.WriteLine($"Quiz: {selectedQuiz.Name}\n");
-    Console.WriteLine($"Je score is: {score}/{questionCount} ({scorePercentage}%)!");
+    Styling.AddHeader($"Quiz: {selectedQuiz.Name}\n");
+    Styling.AddOption($"Je score is: {score}/{questionCount} ({scorePercentage}%)!");
     Console.ReadKey();
 }
 
@@ -193,14 +202,14 @@ void UploadQuiz()
     string path = Helpers.AskNotEmpty("Geef het pad naar het CSV bestand:\n");
     if (!File.Exists(path))
     {
-        Console.WriteLine("Bestand niet gevonden!");
+        Styling.AddError("Bestand niet gevonden!");
         Console.ReadKey();
         return;
     }
     else if (!path.ToLower().EndsWith(".csv"))
     {
         // Check if the file is a CSV file
-        Console.WriteLine("Bestand is geen CSV!");
+        Styling.AddError("Bestand is geen CSV!");
         Console.ReadKey();
         return;
     }
@@ -274,7 +283,7 @@ void UploadQuiz()
 
     dbContext.SaveChanges();
 
-    Console.WriteLine("\nQuiz uploaded!");
+    Styling.AddInfo("\nQuiz uploaded!");
     Console.ReadKey();
 }
 
@@ -285,7 +294,7 @@ void ViewSubmissions()
     // selecteer een student
     foreach (var user in dbContext.Users)
     {
-        Console.WriteLine($"{user.Id}) {user.Name}");
+        Styling.AddHeader($"{user.Id}) {user.Name}");
     }
 
     int studentId = Helpers.AskInt("\nGeef het student id:\n");
@@ -293,39 +302,41 @@ void ViewSubmissions()
     User? selectedUser = dbContext.Users.Where(u => u.Id == studentId).FirstOrDefault();
     if (selectedUser == null)
     {
-        Console.WriteLine("Student niet gevonden!");
+        Styling.AddError("Student niet gevonden!");
         Console.ReadKey();
         return;
     }
 
     Console.Clear();
-    Console.WriteLine($"Student: {selectedUser.Name}\n");
+    Styling.AddHeader($"Student: {selectedUser.Name}\n");
 
     // selecteer quiz
+    Styling.AddLine();
     foreach (var quiz in dbContext.Quizzes)
     {
-        Console.WriteLine($"{quiz.Id}) {quiz.Name}");
+        Styling.AddOption($"{quiz.Id}) {quiz.Name}");
     }
+    Styling.AddLine();
 
     int quizId = Helpers.AskInt("\nGeef het quiz id:\n");
 
     Quiz? selectedQuiz = dbContext.Quizzes.Where(q => q.Id == quizId).FirstOrDefault();
     if (selectedQuiz == null)
     {
-        Console.WriteLine("Quiz niet gevonden!");
+        Styling.AddError("Quiz niet gevonden!");
         Console.ReadKey();
         return;
     }
 
     // toon alle quizvragen ingevuld door de student
     Console.Clear();
-    Console.WriteLine($"Student: {selectedUser.Name}");
-    Console.WriteLine($"Quiz: {selectedQuiz.Name}");
+    Styling.AddHeader($"Student: {selectedUser.Name}");
+    Styling.AddHeader($"Quiz: {selectedQuiz.Name}");
 
     int totalQuestions = dbContext.Questions.Where(q => q.QuizId == selectedQuiz.Id).Count();
     int score = dbContext.Submissions.Where(s => s.UserId == selectedUser.Id && s.QuizId == selectedQuiz.Id && s.IsCorrect).Count() - 1;
     decimal percentage = Math.Round((decimal)score / totalQuestions * 100, 1);
-    Console.WriteLine($"Score: {score}/{totalQuestions} ({percentage}%)\n");
+    Styling.AddHeader($"Score: {score}/{totalQuestions} ({percentage}%)\n");
 
     IEnumerable<QuizQuestion> questions = dbContext.Questions.Where(q => q.QuizId == selectedQuiz.Id);
 
@@ -334,13 +345,13 @@ void ViewSubmissions()
         UserSubmission? submission = new DataContext().Submissions.Where(s => s.UserId == selectedUser.Id && s.QuizId == selectedQuiz.Id && s.QuestionId == question.Id).FirstOrDefault();
         if (submission != null)
         {
-            Console.WriteLine($"Vraag: {question.Question}");
-            Console.WriteLine($"Antwoord: {submission.Answer}");
-            Console.WriteLine($"Correct: {submission.IsCorrect}");
+            Styling.AddHeader($"Vraag: {question.Question}");
+            Styling.AddHeader($"Antwoord: {submission.Answer}");
+            Styling.AddHeader($"Correct: {submission.IsCorrect}");
 
             if (!submission.IsCorrect)
             {
-                Console.WriteLine($"Correct antwoord: {question.CorrectAnswer}");
+                Styling.AddError($"Correct antwoord: {question.CorrectAnswer}");
             }
 
             Console.WriteLine();
@@ -357,7 +368,7 @@ void ManageQuestions()
     // selecteer een quiz
     foreach (var quiz in dbContext.Quizzes)
     {
-        Console.WriteLine($"{quiz.Id}) {quiz.Name}");
+        Styling.AddHeader($"{quiz.Id}) {quiz.Name}");
     }
 
     int quizId = Helpers.AskInt("\nGeef het quiz id:\n");
@@ -365,20 +376,20 @@ void ManageQuestions()
     Quiz? selectedQuiz = dbContext.Quizzes.Where(q => q.Id == quizId).FirstOrDefault();
     if (selectedQuiz == null)
     {
-        Console.WriteLine("Quiz niet gevonden!");
+        Styling.AddError("Quiz niet gevonden!");
         Console.ReadKey();
         return;
     }
 
     Console.Clear();
-    Console.WriteLine($"Quiz: {selectedQuiz.Name}\n");
+    Styling.AddHeader($"Quiz: {selectedQuiz.Name}\n");
 
     // toon alle vragen van de geselecteerde quiz
     IEnumerable<QuizQuestion> questions = dbContext.Questions.Where(q => q.QuizId == selectedQuiz.Id);
 
     foreach (var question in questions)
     {
-        Console.WriteLine($"{question.Id}) {question.Question}");
+        Styling.AddError($"{question.Id}) {question.Question}");
     }
 
     // vraag om een vraag id
@@ -386,7 +397,7 @@ void ManageQuestions()
     QuizQuestion? selectedQuestion = dbContext.Questions.Where(q => q.Id == questionId).FirstOrDefault();
     if (selectedQuestion == null)
     {
-        Console.WriteLine("Vraag niet gevonden!");
+        Styling.AddError("Vraag niet gevonden!");
         Console.ReadKey();
         return;
     }
@@ -394,11 +405,13 @@ void ManageQuestions()
     Console.Clear();
 
     // toon de geselecteerde vraag
-    Console.WriteLine($"Quiz: {selectedQuiz.Name}");
-    Console.WriteLine($"Vraag: {selectedQuestion.Question}\n");
+    Styling.AddHeader($"Quiz: {selectedQuiz.Name}");
+    Styling.AddHeader($"Vraag: {selectedQuestion.Question}\n");
 
     // toon opties
-    Console.WriteLine("1) Verwijder vraag");
+    Styling.AddLine();
+    Styling.AddOption("1) Verwijder vraag");
+    Styling.AddLine();
 
     string input = Helpers.AskNotEmpty("\nKies een optie:\n");
     switch (input)
@@ -406,7 +419,7 @@ void ManageQuestions()
         case "1":
             dbContext.Questions.Remove(selectedQuestion);
             dbContext.SaveChanges();
-            Console.WriteLine("Vraag verwijderd!");
+            Styling.AddInfo("Vraag verwijderd!");
             break;
     }
 
