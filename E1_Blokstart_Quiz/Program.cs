@@ -17,6 +17,7 @@ void MainMenu()
         Console.WriteLine("1. Kies een quiz");
         Console.WriteLine("2. Quiz uploaden");
         Console.WriteLine("3. Antwoorden controleren");
+        Console.WriteLine("4. Vragen beheren");
         Console.WriteLine("X. Exit");
 
         string input = Helpers.AskNotEmpty("\nKies een optie:\n");
@@ -30,6 +31,9 @@ void MainMenu()
                 break;
             case "3":
                 ViewSubmissions();
+                break;
+            case "4":
+                ManageQuestions();
                 break;
             case "x":
                 option = "x";
@@ -341,6 +345,69 @@ void ViewSubmissions()
 
             Console.WriteLine();
         }
+    }
+
+    Console.ReadKey();
+}
+
+void ManageQuestions()
+{
+    Console.Clear();
+
+    // selecteer een quiz
+    foreach (var quiz in dbContext.Quizzes)
+    {
+        Console.WriteLine($"{quiz.Id}) {quiz.Name}");
+    }
+
+    int quizId = Helpers.AskInt("\nGeef het quiz id:\n");
+
+    Quiz? selectedQuiz = dbContext.Quizzes.Where(q => q.Id == quizId).FirstOrDefault();
+    if (selectedQuiz == null)
+    {
+        Console.WriteLine("Quiz niet gevonden!");
+        Console.ReadKey();
+        return;
+    }
+
+    Console.Clear();
+    Console.WriteLine($"Quiz: {selectedQuiz.Name}\n");
+
+    // toon alle vragen van de geselecteerde quiz
+    IEnumerable<QuizQuestion> questions = dbContext.Questions.Where(q => q.QuizId == selectedQuiz.Id);
+
+    foreach (var question in questions)
+    {
+        Console.WriteLine($"{question.Id}) {question.Question}");
+    }
+
+    // vraag om een vraag id
+    int questionId = Helpers.AskInt("\nGeef de vraag id:\n");
+    QuizQuestion? selectedQuestion = dbContext.Questions.Where(q => q.Id == questionId).FirstOrDefault();
+    if (selectedQuestion == null)
+    {
+        Console.WriteLine("Vraag niet gevonden!");
+        Console.ReadKey();
+        return;
+    }
+
+    Console.Clear();
+
+    // toon de geselecteerde vraag
+    Console.WriteLine($"Quiz: {selectedQuiz.Name}");
+    Console.WriteLine($"Vraag: {selectedQuestion.Question}\n");
+
+    // toon opties
+    Console.WriteLine("1) Verwijder vraag");
+
+    string input = Helpers.AskNotEmpty("\nKies een optie:\n");
+    switch (input)
+    {
+        case "1":
+            dbContext.Questions.Remove(selectedQuestion);
+            dbContext.SaveChanges();
+            Console.WriteLine("Vraag verwijderd!");
+            break;
     }
 
     Console.ReadKey();
