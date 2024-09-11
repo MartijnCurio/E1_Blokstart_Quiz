@@ -11,10 +11,10 @@ namespace E1_Blokstart_Quiz.Model
         public int Id { get; set; }
         public int QuizId { get; set; }
         public string Question { get; set; }
-        public string AnswerA { get; set; }
-        public string AnswerB { get; set; }
-        public string AnswerC { get; set; }
-        public string CorrectAnswer { get; set; } // A, B or C
-        public List<string>? Keywords { get; set; } // used for open questions
+        public int Type { get; set; } // 0 = closed, 1 = open, 2 = multiple choice
+        public string? AnswerA { get; set; }
+        public string? AnswerB { get; set; }
+        public string? AnswerC { get; set; }
+        public string? CorrectAnswer { get; set; } // A, B, C or keywords
     }
 }

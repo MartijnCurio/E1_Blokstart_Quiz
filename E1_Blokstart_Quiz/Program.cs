@@ -7,27 +7,34 @@ DataContext dbContext = new DataContext();
 
 void MainMenu()
 {
-    Console.Clear();
-    Console.WriteLine("Welcome to the Quiz!\n");
-
-    Console.WriteLine("1. Kies een quiz");
-    Console.WriteLine("2. Quiz uploaden");
-    // indien teacher, dan ook resultaten kunnen bekijken als 3e optie
-    Console.WriteLine("X. Exit");
-
-    string input = Helpers.AskNotEmpty("\nKies een optie:\n");
-    switch (input.ToLower())
+    string option = "";
+    do
     {
-        case "1":
-            ShowQuizMenu();
-            break;
-        case "2":
-            UploadQuiz();
-            break;
-        case "x":
-            Environment.Exit(0);
-            break;
+        Console.Clear();
+        Console.WriteLine("Welcome to the Quiz!\n");
+
+        Console.WriteLine("1. Kies een quiz");
+        Console.WriteLine("2. Quiz uploaden");
+        // indien teacher, dan ook resultaten kunnen bekijken als 3e optie
+        Console.WriteLine("X. Exit");
+
+        string input = Helpers.AskNotEmpty("\nKies een optie:\n");
+        switch (input.ToLower())
+        {
+            case "1":
+                ShowQuizMenu();
+                break;
+            case "2":
+                UploadQuiz();
+                break;
+            case "x":
+                option = "x";
+                break;
+        }
     }
+    while (option != "x");
+
+    Console.WriteLine("Goodbye!");
 }
 
 void ShowQuizMenu()
@@ -70,28 +77,73 @@ void StartQuiz(Quiz selectedQuiz)
         Console.WriteLine($"Quiz: {selectedQuiz.Name}");
         Console.WriteLine($"Vraag: {questionIndex}/{questionCount}\n");
 
-        // Toon de vraag en antwoorden
-        Console.WriteLine(question.Question);
-        Console.WriteLine($"A) {question.AnswerA}");
-        Console.WriteLine($"B) {question.AnswerB}");
-        Console.WriteLine($"C) {question.AnswerC}");
-
-        // Vraag om een antwoord
-        string answer = Helpers.AskNotEmpty("\nKies een antwoord (A, B of C):\n").ToUpper();
-        if (answer == question.CorrectAnswer)
+        if (question.Type == 0) // gesloten vraag
         {
-            Console.WriteLine("Correct!");
-            score++;
+            Console.WriteLine($"{question.Question}\n");
+            Console.WriteLine($"A) {question.AnswerA}");
+            Console.WriteLine($"B) {question.AnswerB}");
+            Console.WriteLine($"C) {question.AnswerC}");
+            
+            string answer = Helpers.AskNotEmpty("\nGeef je antwoord (A, B of C):\n").ToUpper();
+
+            if (question.CorrectAnswer.Contains(answer))
+            {
+                Console.WriteLine("Correct!");
+                score++;
+            }
+            else
+            {
+                Console.WriteLine($"Incorrect! Het correcte antwoord is: {question.CorrectAnswer}");
+            }
         }
-        else
+        else if (question.Type == 1) // open vraag
         {
-            Console.WriteLine($"Incorrect! Het correcte antwoord was: {question.CorrectAnswer}");
+            var keywords = question.CorrectAnswer.Split(',');
+
+            Console.WriteLine($"{question.Question}\n");
+
+            string answer = Helpers.AskNotEmpty("\nGeef je antwoord:\n").ToUpper();
+
+            bool correct = true;
+            foreach (var keyword in keywords)
+            {
+                if (!answer.Contains(keyword))
+                {
+                    correct = false;
+                    break;
+                }
+            }
+            if (correct)
+            {
+                Console.WriteLine("Correct!");
+                score++;
+            }
+            else
+            {
+                Console.WriteLine($"Incorrect! Jouw antwoord bevat niet alle keywords: {question.CorrectAnswer}");
+            }
+        }
+        else // meerkeuze vraag
+        {
+            Console.WriteLine($"{question.Question}\n");
+            Console.WriteLine($"A) {question.AnswerA}");
+            Console.WriteLine($"B) {question.AnswerB}");
+            Console.WriteLine($"C) {question.AnswerC}");
+            
+            string answer = Helpers.AskNotEmpty("\nGeef je antwoord (A, B, C):\n").ToUpper();
+
+            if (answer == question.CorrectAnswer)
+            {
+                Console.WriteLine("Correct!");
+                score++;
+            }
+            else
+            {
+                Console.WriteLine($"Incorrect! Het correcte antwoord is: {question.CorrectAnswer}");
+            }
         }
 
-        // wacht even zodat de gebruiker de feedback kan lezen
         Console.ReadKey();
-
-        questionIndex++;
     }
 
     // Toon de score
@@ -108,16 +160,23 @@ void UploadQuiz()
     Console.Clear();
     
     // Vraag om het pad naar het CSV bestand (quiz uploaden)
-    string path = Helpers.AskNotEmpty("Geef het pad naar het CSV bestand:");
+    string path = Helpers.AskNotEmpty("Geef het pad naar het CSV bestand:\n");
     if (!File.Exists(path))
     {
         Console.WriteLine("Bestand niet gevonden!");
         Console.ReadKey();
         return;
     }
+    else if (!path.ToLower().EndsWith(".csv"))
+    {
+        // Check if the file is a CSV file
+        Console.WriteLine("Bestand is geen CSV!");
+        Console.ReadKey();
+        return;
+    }
 
     // Vraag om de naam van de quiz
-    string quizName = Helpers.AskNotEmpty("Geef de naam van de quiz:");
+    string quizName = Helpers.AskNotEmpty("\nGeef de naam van de quiz:\n");
 
     // Create a new quiz
     Quiz newQuiz = new()
@@ -142,24 +201,51 @@ void UploadQuiz()
             // Split the line by colons (you can adjust this for other delimiters)
             var values = line.Split(';');
 
-            // Add the split values to the list
-            QuizQuestion parsedQuestion = new()
+            // Get all correct answers (1 = closed, 2+ = open)
+            var correctAnswers = values[5].Split(',');
+
+            QuizQuestion daQuestion = new()
             {
                 QuizId = newQuiz.Id, // foreign key
                 Question = values[1],
-                AnswerA = values[2],
-                AnswerB = values[3],
-                AnswerC = values[4],
-                CorrectAnswer = values[5].ToUpper()
+                CorrectAnswer = values[5].ToUpper(),
             };
 
-            dbContext.Questions.Add(parsedQuestion);
+            if (correctAnswers.Length > 1)
+            {
+                // More than one correct answer, so it's an open question or multiple choice
+                if (!string.IsNullOrEmpty(values[2]) && !string.IsNullOrEmpty(values[3]) && !string.IsNullOrEmpty(values[4]))
+                {
+                    // multiple choice question (A, B, C)
+                    daQuestion.AnswerA = values[2];
+                    daQuestion.AnswerB = values[3];
+                    daQuestion.AnswerC = values[4];
+                    daQuestion.Type = 2;
+                }
+                else
+                {
+                    // open question (with keywords)
+                    daQuestion.Type = 1;
+                }
+            }
+            else
+            {
+                // closed question
+                daQuestion.AnswerA = values[2];
+                daQuestion.AnswerB = values[3];
+                daQuestion.AnswerC = values[4];
+                daQuestion.Type = 0;
+            }
+
+            // Add the question to the database
+            dbContext.Questions.Add(daQuestion);
+            dbContext.SaveChanges();
         }
     }
 
     dbContext.SaveChanges();
 
-    Console.WriteLine("Quiz uploaded!");
+    Console.WriteLine("\nQuiz uploaded!");
     Console.ReadKey();
 }
 

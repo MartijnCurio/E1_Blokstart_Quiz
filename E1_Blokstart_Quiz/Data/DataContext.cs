@@ -12,7 +12,7 @@ namespace CarDB.Data
     {
         public DbSet<User> Users { get; set; }
         public DbSet<QuizQuestion> Questions { get; set; }
-        public DbSet<Submission> Submissions { get; set; }
+        public DbSet<UserSubmission> Submissions { get; set; }
         public DbSet<Quiz> Quizzes { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
