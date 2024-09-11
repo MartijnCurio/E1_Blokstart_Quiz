@@ -1,6 +1,7 @@
 ﻿using CarDB.Data;
 using E1_Blokstart_Quiz.Model;
 using Microsoft.EntityFrameworkCore;
+using System.Runtime.CompilerServices;
 using WheelyGoodCars;
 
 DataContext dbContext = new DataContext();
@@ -15,7 +16,7 @@ void MainMenu()
 
         Console.WriteLine("1. Kies een quiz");
         Console.WriteLine("2. Quiz uploaden");
-        // indien teacher, dan ook resultaten kunnen bekijken als 3e optie
+        Console.WriteLine("3. Antwoorden controleren");
         Console.WriteLine("X. Exit");
 
         string input = Helpers.AskNotEmpty("\nKies een optie:\n");
@@ -26,6 +27,9 @@ void MainMenu()
                 break;
             case "2":
                 UploadQuiz();
+                break;
+            case "3":
+                ViewSubmissions();
                 break;
             case "x":
                 option = "x";
@@ -77,6 +81,9 @@ void StartQuiz(Quiz selectedQuiz)
         Console.WriteLine($"Quiz: {selectedQuiz.Name}");
         Console.WriteLine($"Vraag: {questionIndex}/{questionCount}\n");
 
+        string answer;
+        bool isCorrect = false;
+
         if (question.Type == 0) // gesloten vraag
         {
             Console.WriteLine($"{question.Question}\n");
@@ -84,12 +91,13 @@ void StartQuiz(Quiz selectedQuiz)
             Console.WriteLine($"B) {question.AnswerB}");
             Console.WriteLine($"C) {question.AnswerC}");
             
-            string answer = Helpers.AskNotEmpty("\nGeef je antwoord (A, B of C):\n").ToUpper();
+            answer = Helpers.AskNotEmpty("\nGeef je antwoord (A, B of C):\n").ToUpper();
 
             if (question.CorrectAnswer.Contains(answer))
             {
                 Console.WriteLine("Correct!");
                 score++;
+                isCorrect = true;
             }
             else
             {
@@ -102,7 +110,7 @@ void StartQuiz(Quiz selectedQuiz)
 
             Console.WriteLine($"{question.Question}\n");
 
-            string answer = Helpers.AskNotEmpty("\nGeef je antwoord:\n").ToUpper();
+            answer = Helpers.AskNotEmpty("\nGeef je antwoord:\n").ToUpper();
 
             bool correct = true;
             foreach (var keyword in keywords)
@@ -122,6 +130,8 @@ void StartQuiz(Quiz selectedQuiz)
             {
                 Console.WriteLine($"Incorrect! Jouw antwoord bevat niet alle keywords: {question.CorrectAnswer}");
             }
+
+            isCorrect = correct;
         }
         else // meerkeuze vraag
         {
@@ -130,17 +140,33 @@ void StartQuiz(Quiz selectedQuiz)
             Console.WriteLine($"B) {question.AnswerB}");
             Console.WriteLine($"C) {question.AnswerC}");
             
-            string answer = Helpers.AskNotEmpty("\nGeef je antwoord (A, B, C):\n").ToUpper();
+            answer = Helpers.AskNotEmpty("\nGeef je antwoord (A, B, C):\n").ToUpper();
 
             if (answer == question.CorrectAnswer)
             {
                 Console.WriteLine("Correct!");
                 score++;
+                isCorrect = true;
             }
             else
             {
                 Console.WriteLine($"Incorrect! Het correcte antwoord is: {question.CorrectAnswer}");
             }
+        }
+
+        // submit to database
+        using (DataContext newContext = new())
+        {
+            UserSubmission submission = new()
+            {
+                UserId = 1, // hardcoded student id
+                QuizId = selectedQuiz.Id,
+                QuestionId = question.Id,
+                Answer = answer,
+                IsCorrect = isCorrect,
+            };
+            newContext.Submissions.Add(submission);
+            newContext.SaveChanges();
         }
 
         Console.ReadKey();
@@ -186,7 +212,6 @@ void UploadQuiz()
 
     // Add the quiz to the database
     dbContext.Quizzes.Add(newQuiz);
-    dbContext.SaveChanges();
 
     // Read the CSV file
     using (var reader = new StreamReader(path))
@@ -247,6 +272,86 @@ void UploadQuiz()
 
     Console.WriteLine("\nQuiz uploaded!");
     Console.ReadKey();
+}
+
+void ViewSubmissions()
+{
+    Console.Clear();
+
+    // selecteer een student
+    foreach (var user in dbContext.Users)
+    {
+        Console.WriteLine($"{user.Id}) {user.Name}");
+    }
+
+    int studentId = Helpers.AskInt("\nGeef het student id:\n");
+
+    User? selectedUser = dbContext.Users.Where(u => u.Id == studentId).FirstOrDefault();
+    if (selectedUser == null)
+    {
+        Console.WriteLine("Student niet gevonden!");
+        Console.ReadKey();
+        return;
+    }
+
+    Console.Clear();
+    Console.WriteLine($"Student: {selectedUser.Name}\n");
+
+    // selecteer quiz
+    foreach (var quiz in dbContext.Quizzes)
+    {
+        Console.WriteLine($"{quiz.Id}) {quiz.Name}");
+    }
+
+    int quizId = Helpers.AskInt("\nGeef het quiz id:\n");
+
+    Quiz? selectedQuiz = dbContext.Quizzes.Where(q => q.Id == quizId).FirstOrDefault();
+    if (selectedQuiz == null)
+    {
+        Console.WriteLine("Quiz niet gevonden!");
+        Console.ReadKey();
+        return;
+    }
+
+    // toon alle quizvragen ingevuld door de student
+    Console.Clear();
+    Console.WriteLine($"Student: {selectedUser.Name}");
+    Console.WriteLine($"Quiz: {selectedQuiz.Name}");
+
+    int totalQuestions = dbContext.Questions.Where(q => q.QuizId == selectedQuiz.Id).Count();
+    int score = dbContext.Submissions.Where(s => s.UserId == selectedUser.Id && s.QuizId == selectedQuiz.Id && s.IsCorrect).Count() - 1;
+    decimal percentage = Math.Round((decimal)score / totalQuestions * 100, 1);
+    Console.WriteLine($"Score: {score}/{totalQuestions} ({percentage}%)\n");
+
+    IEnumerable<QuizQuestion> questions = dbContext.Questions.Where(q => q.QuizId == selectedQuiz.Id);
+
+    foreach (var question in questions)
+    {
+        UserSubmission? submission = new DataContext().Submissions.Where(s => s.UserId == selectedUser.Id && s.QuizId == selectedQuiz.Id && s.QuestionId == question.Id).FirstOrDefault();
+        if (submission != null)
+        {
+            Console.WriteLine($"Vraag: {question.Question}");
+            Console.WriteLine($"Antwoord: {submission.Answer}");
+            Console.WriteLine($"Correct: {submission.IsCorrect}");
+
+            if (!submission.IsCorrect)
+            {
+                Console.WriteLine($"Correct antwoord: {question.CorrectAnswer}");
+            }
+
+            Console.WriteLine();
+        }
+    }
+
+    Console.ReadKey();
+}
+
+// manual seed
+if (!dbContext.Users.Any())
+{
+    dbContext.Users.Add(new User { Name = "John Doe", Password = "test123", IsTeacher = false });
+    dbContext.Users.Add(new User { Name = "Jane Doe", Password = "test123", IsTeacher = true });
+    dbContext.SaveChanges();
 }
 
 // Start the application
