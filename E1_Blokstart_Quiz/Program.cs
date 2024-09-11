@@ -182,6 +182,8 @@ void StartQuiz(Quiz selectedQuiz)
             newContext.SaveChanges();
         }
 
+        questionIndex++;
+
         Console.ReadKey();
     }
 
@@ -199,7 +201,7 @@ void UploadQuiz()
     Console.Clear();
     
     // Vraag om het pad naar het CSV bestand (quiz uploaden)
-    string path = Helpers.AskNotEmpty("Geef het pad naar het CSV bestand:\n");
+    string path = Helpers.AskNotEmpty("Geef het pad naar het CSV bestand:\n").Replace("\"", "");
     if (!File.Exists(path))
     {
         Styling.AddError("Bestand niet gevonden!");
